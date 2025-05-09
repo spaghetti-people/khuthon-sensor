@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -73,6 +74,34 @@ func NewRouter() *gin.Engine {
 		dataLock.Unlock()
 
 		c.JSON(http.StatusOK, current)
+	})
+
+	r.GET("/daily_conditions_progress", func(c *gin.Context) {
+		files := []string{"exdata/1.json", "exdata/2.json", "exdata/3.json"}
+		dataLock.Lock()
+		currentIndex := index
+		index = (index + 1) % len(files)
+		dataLock.Unlock()
+
+		file := files[currentIndex]
+		f, err := os.Open(file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": file + " 파일을 열 수 없습니다: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		var result map[string]interface{}
+		decoder := json.NewDecoder(f)
+		if err := decoder.Decode(&result); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": file + " 파일을 파싱할 수 없습니다: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
+	r.POST("/water", func(ctx *gin.Context) {
+		fmt.Print("시원한 물이 좋아요")
 	})
 
 	return r
